@@ -1,0 +1,90 @@
+import javax.print.attribute.standard.RequestingUserName
+
+buildscript {
+
+    repositories {
+        mavenLocal()
+        maven { url 'http://maven.aliyun.com/nexus/content/repositories/central/' }
+        mavenCentral()
+    }
+    ext {
+        springBootVersion = '1.5.8.RELEASE'
+    }
+
+    dependencies {
+        classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+    }
+}
+
+apply plugin: 'org.springframework.boot'
+
+
+
+dependencies {
+    compile('org.springframework.boot:spring-boot-starter')
+    compile('org.springframework.boot:spring-boot-starter-test')
+    compile group: 'org.apache.curator', name: 'curator-framework', version: '2.12.0'
+    compile group: 'org.apache.curator', name: 'curator-recipes', version: '2.12.0'
+    compile group: 'org.apache.zookeeper', name: 'zookeeper', version: '3.4.12', ext: 'pom'
+    testCompile group: 'junit', name: 'junit', version: '4.11'
+}
+
+
+jar {
+    manifest {
+        attributes("Main-Class": "com.sequence.main.MainApplication")
+    }
+    jar.baseName
+
+}
+
+task addDependToManifest << {
+    if (!configurations.runtime.isEmpty()) {
+        jar.manifest.attributes('Class-Path': ".  lib/" + configurations.runtime.collect { it.name }.join(' lib/'))
+    }
+
+}
+jar.dependsOn += addDependToManifest
+
+task copyDependencies(type: Copy) {
+    from configurations.runtime
+    destinationDir = file('build/lib/')
+}
+jar.dependsOn += copyDependencies
+
+/*
+*
+* copy
+* */
+task copyDocker(type: Copy) {
+    from "src/main/docker"
+    into "build/docker"
+}
+
+task copyJar(type: Copy) {
+    println("build/libs/" + project.name + "-" + project.version + ".jar")
+    from "build/libs/" + project.name + "-" + project.version + ".jar"
+    into "build/docker/"
+    rename(project.name + "-" + project.version + ".jar", "app.jar")
+
+}
+
+task copyBin(type: Copy) {
+    from "src/main/bin"
+    into "build/docker/bin"
+}
+
+task copyLib(type: Copy) {
+    dependsOn copyDocker
+    dependsOn copyJar
+    dependsOn copyBin
+
+    from "build/lib"
+    into "build/docker/lib"
+}
+
+build.dependsOn copyLib
+
+
+
+

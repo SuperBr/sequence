@@ -1,0 +1,2 @@
+rootProject.name = 'sequence'
+include 'sequence-api','sequence-provider'
